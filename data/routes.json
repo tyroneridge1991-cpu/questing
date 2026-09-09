@@ -1,0 +1,101 @@
+{
+  "routes": {
+    "Cook's Assistant": {
+      "start": "Lumbridge Castle",
+      "stages": [
+        {"title":"Talk to the Cook","destination":"Lumbridge Castle kitchen","transport":"Walk","items":["Bucket","Pot"]},
+        {"title":"Collect milk","destination":"Lumbridge cow field","transport":"Walk","items":["Bucket"]},
+        {"title":"Collect egg","destination":"Lumbridge chicken farm","transport":"Walk","items":[]},
+        {"title":"Collect flour","destination":"Lumbridge windmill","transport":"Walk","items":["Pot"]},
+        {"title":"Return ingredients","destination":"Lumbridge Castle kitchen","transport":"Walk","items":["Egg","Bucket of milk","Pot of flour"]}
+      ]
+    },
+    "The Restless Ghost": {
+      "start":"Lumbridge",
+      "stages":[
+        {"title":"Speak to Father Aereck","destination":"Lumbridge church","transport":"Walk","items":[]},
+        {"title":"Investigate the ghost","destination":"Lumbridge graveyard","transport":"Walk","items":[]},
+        {"title":"Speak to Father Urhney","destination":"Lumbridge Swamp","transport":"Walk","items":[]},
+        {"title":"Recover the skull","destination":"Lumbridge Swamp / ghost's remains","transport":"Walk","items":[]},
+        {"title":"Finish the quest","destination":"Lumbridge graveyard","transport":"Walk","items":["Ghost's skull"]}
+      ]
+    },
+    "Romeo & Juliet": {
+      "start":"Varrock",
+      "stages":[
+        {"title":"Speak to Romeo","destination":"Varrock town square","transport":"Walk","items":[]},
+        {"title":"Speak to Father Lawrence","destination":"Varrock church","transport":"Walk","items":[]},
+        {"title":"Collect cadava berries","destination":"South of Varrock","transport":"Walk","items":[]},
+        {"title":"Return to Romeo","destination":"Varrock town square","transport":"Walk","items":["Cadava berries"]}
+      ]
+    },
+    "Sheep Shearer": {
+      "start":"Lumbridge",
+      "stages":[
+        {"title":"Speak to Fred","destination":"Lumbridge sheep farm","transport":"Walk","items":[]},
+        {"title":"Shear the sheep","destination":"Lumbridge sheep farm","transport":"Walk","items":["Shears"]},
+        {"title":"Spin the wool","destination":"Lumbridge castle spinning wheel","transport":"Walk","items":["Wool"]},
+        {"title":"Return to Fred","destination":"Lumbridge sheep farm","transport":"Walk","items":["Ball of wool x20"]}
+      ]
+    },
+    "Waterfall Quest": {
+      "start":"Baxtorian Falls",
+      "stages":[
+        {"title":"Start with Almera","destination":"Baxtorian Falls","transport":"Teleport/Walk","items":["Rope"]},
+        {"title":"Enter the waterfall","destination":"Baxtorian Falls dungeon","transport":"Rope","items":["Rope"]},
+        {"title":"Recover the chalice","destination":"Waterfall dungeon","transport":"Walk","items":["Rope"]},
+        {"title":"Complete the quest","destination":"Baxtorian Falls","transport":"Walk","items":[]}
+      ],
+      "skill_requirements":{"attack":40,"strength":40}
+    },
+    "Tree Gnome Village": {
+      "start":"Tree Gnome Village",
+      "stages":[
+        {"title":"Speak to King Bolren","destination":"Tree Gnome Village","transport":"Spirit tree/Walk","items":[]},
+        {"title":"Navigate the maze","destination":"Tree Gnome Village maze","transport":"Walk","items":[]},
+        {"title":"Recover the orbs","destination":"Battlefield of Khazard","transport":"Walk","items":[]},
+        {"title":"Return to King Bolren","destination":"Tree Gnome Village","transport":"Walk","items":[]}
+      ]
+    },
+    "Grand Tree": {
+      "start":"Grand Tree",
+      "stages":[
+        {"title":"Speak to King Narnode","destination":"Grand Tree","transport":"Spirit tree/Walk","items":[]},
+        {"title":"Investigate the tree","destination":"Grand Tree","transport":"Walk","items":[]},
+        {"title":"Complete dungeon objectives","destination":"Grand Tree dungeon","transport":"Walk","items":["Food","Combat gear"]},
+        {"title":"Return to King Narnode","destination":"Grand Tree","transport":"Spirit tree/Walk","items":[]}
+      ],
+      "skill_requirements":{"agility":25}
+    },
+    "Lost City": {
+      "start":"Lumbridge Swamp",
+      "stages":[
+        {"title":"Find the adventurers","destination":"Lumbridge Swamp","transport":"Walk","items":["Hatchet"]},
+        {"title":"Enter Zanaris","destination":"Lumbridge Swamp shed","transport":"Walk","items":["Dramen staff"]},
+        {"title":"Defeat the Tree Spirit","destination":"Zanaris","transport":"Walk","items":["Food","Combat gear"]},
+        {"title":"Finish the quest","destination":"Zanaris","transport":"Walk","items":[]}
+      ],
+      "skill_requirements":{"crafting":31},
+      "notes":"Axe requirement and the quest's combat encounter should be prepared before entering the spirit tree area."
+    },
+    "Fight Arena": {
+      "start":"Fight Arena",
+      "stages":[
+        {"title":"Speak to Lady Servil","destination":"Fight Arena","transport":"Walk/Teleport","items":["Food","Combat gear"]},
+        {"title":"Rescue the Servils","destination":"Fight Arena compound","transport":"Walk","items":["Food","Combat gear"]},
+        {"title":"Complete arena objectives","destination":"Fight Arena","transport":"Walk","items":["Food","Combat gear"]},
+        {"title":"Finish","destination":"Fight Arena","transport":"Walk","items":[]}
+      ]
+    },
+    "Fairytale I - Growing Pains": {
+      "start":"Zanaris",
+      "stages":[
+        {"title":"Speak to Martin","destination":"Draynor Village","transport":"Teleport/Walk","items":[]},
+        {"title":"Investigate the fairy problem","destination":"Zanaris / Draynor","transport":"Fairy ring/Teleport","items":[]},
+        {"title":"Complete required tasks","destination":"Multiple locations","transport":"Fairy rings/Teleports","items":["Quest-specific items"]},
+        {"title":"Finish","destination":"Zanaris","transport":"Fairy ring","items":[]}
+      ],
+      "notes":"Fairy ring access is a major Ironman routing advantage once unlocked."
+    }
+  }
+}
