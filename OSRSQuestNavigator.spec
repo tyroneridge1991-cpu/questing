@@ -2,11 +2,11 @@
 block_cipher = None
 
 a = Analysis(
-    ['src/app.py'],
-    pathex=[],
+    ['src/app_v2.py'],
+    pathex=['src'],
     binaries=[],
-    datas=[('data/quests.json', 'data')],
-    hiddenimports=[],
+    datas=[('data/quests.json', 'data'), ('data/routes.json', 'data')],
+    hiddenimports=['PIL.ImageGrab', 'PIL.ImageEnhance', 'PIL.ImageOps', 'winrtocr'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
