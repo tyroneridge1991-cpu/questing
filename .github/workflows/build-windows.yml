@@ -24,7 +24,7 @@ jobs:
       - name: Build EXE
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --onefile --windowed --name OSRSQuestNavigator --add-data "data/quests.json;data" --add-data "data/routes.json;data" src/app.py
+          pyinstaller --noconfirm --clean --onefile --windowed --name OSRSQuestNavigator --add-data "data/quests.json;data" --add-data "data/routes.json;data" --collect-submodules winrtocr --collect-submodules winsdk src/app.py
       - name: Verify EXE
         shell: pwsh
         run: |
