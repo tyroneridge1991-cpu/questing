@@ -24,6 +24,22 @@ if user32:
     user32.GetWindowRect.restype = wt.BOOL
     user32.IsWindow.argtypes = [wt.HWND]
     user32.IsWindow.restype = wt.BOOL
+    user32.GetWindowLongW.argtypes = [wt.HWND, ctypes.c_int]
+    user32.GetWindowLongW.restype = ctypes.c_long
+    user32.SetWindowLongW.argtypes = [wt.HWND, ctypes.c_int, ctypes.c_long]
+    user32.SetWindowLongW.restype = ctypes.c_long
+    user32.SetWindowPos.argtypes = [wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+    user32.SetWindowPos.restype = wt.BOOL
+
+GWL_EXSTYLE = -20
+WS_EX_LAYERED = 0x00080000
+WS_EX_TRANSPARENT = 0x00000020
+WS_EX_NOACTIVATE = 0x08000000
+HWND_TOPMOST = wt.HWND(-1)
+SWP_NOSIZE = 0x0001
+SWP_NOMOVE = 0x0002
+SWP_NOACTIVATE = 0x0010
+SWP_SHOWWINDOW = 0x0040
 
 
 def load_json(path, fallback):
@@ -98,7 +114,6 @@ class Navigator:
         self.overlay = None
         self.canvas = None
         self.points = []
-        self.drag = None
         self.iron = tk.BooleanVar(value=self.cfg.get('ironman', True))
         self.overlay_enabled = tk.BooleanVar(value=self.cfg.get('overlay_enabled', True))
         self.root.overrideredirect(False)
@@ -217,7 +232,7 @@ class Navigator:
         self.client_status=tk.Label(self.overlay_tab,text='Searching for RuneLite…',bg='#20242a',fg='#c8cdd3',justify='left',anchor='w'); self.client_status.pack(fill='x',padx=12,pady=8)
         tk.Button(self.overlay_tab,text='Select RuneLite window',command=self.open_window_picker,bg='#3f6685',fg='white',relief='flat').pack(anchor='w',padx=12,pady=5)
         tk.Checkbutton(self.overlay_tab,text='Show route overlay',variable=self.overlay_enabled,command=self.toggle_overlay,bg='#15171a',fg='white',selectcolor='#15171a',activebackground='#15171a',activeforeground='white').pack(anchor='w',padx=12,pady=5)
-        tk.Label(self.overlay_tab,text='The overlay is external and click-through. It does not send clicks or keyboard input to RuneLite.',bg='#15171a',fg='#bfc5cc',justify='left',wraplength=560).pack(anchor='w',padx=12,pady=10)
+        tk.Label(self.overlay_tab,text='The route layer is click-through, while this Navigator window remains clickable. It does not send clicks or keyboard input to RuneLite.',bg='#15171a',fg='#bfc5cc',justify='left',wraplength=560).pack(anchor='w',padx=12,pady=10)
 
     def open_window_picker(self):
         wins = all_windows()
@@ -244,10 +259,12 @@ class Navigator:
     def on_client_attached(self):
         self.client_label.config(text='OSRS: attached',fg='#79d279')
         self.client_status.config(text=f'Attached to: {self.client[1]}\nSize: {self.client[4]-self.client[2]} × {self.client[5]-self.client[3]}')
-        self.ensure_overlay(); self.position_overlay(); self.update_dashboard()
+        self.ensure_overlay(); self.position_overlay(); self.raise_navigator(); self.update_dashboard()
 
     def ensure_overlay(self):
-        if self.overlay and self.overlay.winfo_exists(): return
+        if self.overlay and self.overlay.winfo_exists():
+            self.make_clickthrough(self.overlay)
+            return
         self.overlay=tk.Toplevel(self.root); self.overlay.overrideredirect(True); self.overlay.attributes('-topmost',True); self.overlay.configure(bg='#010101')
         try:self.overlay.attributes('-transparentcolor','#010101')
         except tk.TclError:self.overlay.attributes('-alpha',0.01)
@@ -255,11 +272,24 @@ class Navigator:
 
     def make_clickthrough(self,win):
         if os.name!='nt':return
-        hwnd=win.winfo_id(); ex=user32.GetWindowLongW(hwnd,-20); user32.SetWindowLongW(hwnd,-20,ex|0x80000|0x20)
+        hwnd=win.winfo_id()
+        ex=user32.GetWindowLongW(hwnd,GWL_EXSTYLE)
+        ex |= WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE
+        user32.SetWindowLongW(hwnd,GWL_EXSTYLE,ex)
+        user32.SetWindowPos(hwnd,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW)
+
+    def raise_navigator(self):
+        if os.name!='nt': return
+        hwnd=self.root.winfo_id()
+        ex=user32.GetWindowLongW(hwnd,GWL_EXSTYLE)
+        ex &= ~WS_EX_TRANSPARENT
+        user32.SetWindowLongW(hwnd,GWL_EXSTYLE,ex)
+        user32.SetWindowPos(hwnd,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE|SWP_SHOWWINDOW)
+        self.root.lift()
 
     def position_overlay(self):
         if not self.client or not self.overlay:return
-        _,_,l,t,r,b=self.client; self.overlay.geometry(f'{max(1,r-l)}x{max(1,b-t)}+{l}+{t}'); self.overlay.deiconify(); self.draw_overlay()
+        _,_,l,t,r,b=self.client; self.overlay.geometry(f'{max(1,r-l)}x{max(1,b-t)}+{l}+{t}'); self.overlay.deiconify(); self.draw_overlay(); self.raise_navigator()
 
     def draw_overlay(self):
         if not self.canvas:return
@@ -298,12 +328,16 @@ class Navigator:
                 self.client=(self.client[0],self.client[1],rect.left,rect.top,rect.right,rect.bottom); self.position_overlay()
         self.root.after(1000,self.tick)
 
-    def start_drag(self,e):pass
     def toggle_visible(self): self.root.withdraw() if self.root.state()!='withdrawn' else self.root.deiconify()
     def toggle_clickthrough(self):
         if os.name!='nt':return
-        hwnd=self.root.winfo_id(); ex=user32.GetWindowLongW(hwnd,-20)
-        user32.SetWindowLongW(hwnd,-20,ex|0x80000|0x20)
+        hwnd=self.root.winfo_id(); ex=user32.GetWindowLongW(hwnd,GWL_EXSTYLE)
+        if ex & WS_EX_TRANSPARENT:
+            ex &= ~WS_EX_TRANSPARENT
+        else:
+            ex |= WS_EX_TRANSPARENT
+        user32.SetWindowLongW(hwnd,GWL_EXSTYLE,ex)
+        self.raise_navigator()
     def persist(self):
         self.cfg['ironman']=self.iron.get(); self.cfg['overlay_enabled']=self.overlay_enabled.get(); self.cfg['x']=self.root.winfo_x(); self.cfg['y']=self.root.winfo_y(); save_json(CONFIG,self.cfg)
     def close(self):
