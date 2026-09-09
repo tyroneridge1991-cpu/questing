@@ -31,10 +31,13 @@ replacement = '''    def make_clickthrough(self, win):
 '''
 s = s[:start] + replacement + s[end:]
 
-# Import the fast passive sync and route projection helpers.
+# Imports for the fast passive sync and route projection helpers.
+if 'import time\n' not in s:
+    s = s.replace('import tkinter as tk\n', 'import tkinter as tk\nimport time\n', 1)
 if 'from screen_sync import ScreenSync' not in s:
-    marker = "import tkinter as tk\n"
-    s = s.replace(marker, marker + "import time\nfrom screen_sync import ScreenSync\nfrom pathing import screen_route, guidance_text\n", 1)
+    s = s.replace('import tkinter as tk\n', 'import tkinter as tk\nfrom screen_sync import ScreenSync\n', 1)
+if 'from pathing import screen_route, guidance_text' not in s:
+    s = s.replace('from screen_sync import ScreenSync\n', 'from screen_sync import ScreenSync\nfrom pathing import screen_route, guidance_text\n', 1)
 
 # Initialize the passive sync engine once. It is deliberately non-blocking.
 needle = "self.client=None; self.overlay=None; self.oc=None; self.interactive=False; self.calibrating=False; self.player=None"
