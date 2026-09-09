@@ -1,0 +1,1 @@
+Window controls requested: the next Windows build should include minimize, maximize/restore, and close buttons in the custom title bar.
