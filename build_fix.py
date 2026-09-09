@@ -1,6 +1,8 @@
 from pathlib import Path
 p = Path('src/app.py')
 s = p.read_text(encoding='utf-8')
+
+# Fix/strengthen OSRS window detection.
 start = s.index('def find_osrs_window():')
 end = s.index('\n\nclass Navigator:', start)
 replacement = '''def find_osrs_window():
@@ -64,5 +66,15 @@ replacement = '''def find_osrs_window():
     matches.sort(key=score)
     return matches[0]
 '''
-p.write_text(s[:start] + replacement + s[end:], encoding='utf-8')
-print('Patched OSRS window detection')
+s = s[:start] + replacement + s[end:]
+
+# Make the separate route overlay non-interactive. Layered + transparent keeps
+# mouse input going to the game underneath and prevents the overlay taking focus.
+old = """    def make_clickthrough(self,win):\n        if os.name!='nt':return\n        hwnd=win.winfo_id(); ex=user32.GetWindowLongW(hwnd,-20); user32.SetWindowLongW(hwnd,-20,ex|0x80000|0x20)\n"""
+new = """    def make_clickthrough(self, win):\n        if os.name != 'nt':\n            return\n        hwnd = win.winfo_id()\n        GWL_EXSTYLE = -20\n        WS_EX_LAYERED = 0x00080000\n        WS_EX_TRANSPARENT = 0x00000020\n        WS_EX_NOACTIVATE = 0x08000000\n        WS_EX_TOOLWINDOW = 0x00000080\n        ex = user32.GetWindowLongW(hwnd, GWL_EXSTYLE)\n        ex |= WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW\n        user32.SetWindowLongW(hwnd, GWL_EXSTYLE, ex)\n        SWP_NOSIZE = 0x0001\n        SWP_NOMOVE = 0x0002\n        SWP_NOACTIVATE = 0x0010\n        SWP_NOOWNERZORDER = 0x0200\n        user32.SetWindowPos(hwnd, -1, 0, 0, 0, 0,\n                            SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOOWNERZORDER)\n"""
+if old not in s:
+    raise SystemExit('Expected make_clickthrough block was not found')
+s = s.replace(old, new, 1)
+
+p.write_text(s, encoding='utf-8')
+print('Patched OSRS detection and click-through overlay')
