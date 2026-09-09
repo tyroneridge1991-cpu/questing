@@ -1,12 +1,12 @@
 import asyncio
+import hashlib
 import os
-import re
 import tempfile
 import threading
 import time
 
 try:
-    from PIL import ImageGrab
+    from PIL import ImageGrab, ImageEnhance, ImageOps
 except Exception:
     ImageGrab = None
 
@@ -23,17 +23,22 @@ SKILLS = [
 ]
 
 class ScreenSync:
-    """Read-only RuneLite screen synchronizer.
+    """Fast, read-only RuneLite screen synchronizer.
 
-    Captures the selected game window and uses Windows OCR. It never moves
-    the mouse, clicks, types, or sends input to RuneLite.
+    OCR is moved to a worker thread, screenshots are fingerprinted before OCR,
+    and the right-side client panel is preferred because it contains most
+    account UI. The synchronizer never moves the mouse, clicks, types, or
+    sends input to RuneLite.
     """
     def __init__(self):
         self.engine = None
         self.lock = threading.Lock()
+        self.worker_lock = threading.Lock()
+        self.last_hash = None
         self.last = {'timestamp': 0, 'skills': {}, 'quests_seen': [],
                      'inventory_text': [], 'equipment_text': [], 'bank_text': [],
-                     'raw_text': '', 'sources': []}
+                     'raw_text': '', 'sources': [], 'status': 'idle'}
+        self.pending = False
 
     def available(self):
         return ImageGrab is not None and WinRTOCR is not None
@@ -44,7 +49,12 @@ class ScreenSync:
         fd, path = tempfile.mkstemp(suffix='.png', prefix='osrs_sync_')
         os.close(fd)
         try:
-            image.save(path, 'PNG')
+            # Upscale a little and increase contrast: this improves small
+            # RuneLite side-panel text without OCR-ing the whole game canvas.
+            image = image.resize((image.width*2, image.height*2))
+            image = ImageOps.grayscale(image)
+            image = ImageEnhance.Contrast(image).enhance(1.6)
+            image.save(path, 'PNG', optimize=True)
             if self.engine is None:
                 self.engine = WinRTOCR()
             result = asyncio.run(self.engine.ocr(path, lang='en-US', detail_level='line'))
@@ -55,12 +65,27 @@ class ScreenSync:
             try: os.remove(path)
             except Exception: pass
 
-    def capture(self, rect):
+    def capture(self, rect, panel_only=True):
         if ImageGrab is None or not rect:
             return None
         try:
             l,t,r,b=rect
+            if panel_only:
+                # RuneLite's account interfaces normally live on the right.
+                width=r-l
+                l=max(l, r-min(360, max(260, width//3)))
             return ImageGrab.grab(bbox=(l,t,r,b), all_screens=True).convert('RGB')
+        except Exception:
+            return None
+
+    def fingerprint(self, image):
+        if image is None:
+            return None
+        # Tiny thumbnail hash is much cheaper than OCR and catches interface
+        # changes such as opening Skills, Quests, Inventory or Bank.
+        try:
+            thumb=image.resize((64,64))
+            return hashlib.blake2b(thumb.tobytes(), digest_size=8).hexdigest()
         except Exception:
             return None
 
@@ -82,8 +107,11 @@ class ScreenSync:
         found={}
         for skill in SKILLS:
             label=skill.title()
-            pat=re.compile(r'\b'+re.escape(label)+r'\b[^0-9]{0,16}(\d{1,3})\b', re.I)
             for text,_ in lines:
+                # Accept the common RuneLite/OSRS forms: "Attack 42" and
+                # "Attack 42/99" while rejecting implausible OCR numbers.
+                import re
+                pat=re.compile(r'\b'+re.escape(label)+r'\b[^0-9]{0,16}(\d{1,3})\b', re.I)
                 m=pat.search(text)
                 if m:
                     try:
@@ -91,7 +119,8 @@ class ScreenSync:
                         if 1 <= n <= 126:
                             found[skill]=n
                             break
-                    except Exception: pass
+                    except Exception:
+                        pass
         return found
 
     def known_quests(self, text, quest_names):
@@ -113,10 +142,14 @@ class ScreenSync:
             source.append('bank')
         return source
 
-    def sync(self, rect, quest_names):
-        image=self.capture(rect)
-        if image is None:
+    def _do_sync(self, rect, quest_names, force=False):
+        image=self.capture(rect, panel_only=True)
+        fp=self.fingerprint(image)
+        if not force and fp == self.last_hash:
             return self.snapshot()
+        self.last_hash=fp
+        with self.lock:
+            self.last['status']='scanning'
         ocr_lines=self._ocr(image)
         lines=self.parse_lines(ocr_lines)
         text='\n'.join(x[0] for x in lines)
@@ -124,15 +157,30 @@ class ScreenSync:
             'timestamp': int(time.time()*1000),
             'skills': self.parse_skills(lines),
             'quests_seen': self.known_quests(text, quest_names),
-            'inventory_text': [],
-            'equipment_text': [],
-            'bank_text': [],
-            'raw_text': text[:12000],
-            'sources': self.classify(text),
+            'inventory_text': [], 'equipment_text': [], 'bank_text': [],
+            'raw_text': text[:12000], 'sources': self.classify(text),
+            'status': 'ready',
         }
         with self.lock:
             self.last=result
         return result
+
+    def request_sync(self, rect, quest_names, force=False):
+        """Queue a scan without blocking Tkinter's UI thread."""
+        if self.pending:
+            return self.snapshot()
+        self.pending=True
+        def worker():
+            try:
+                self._do_sync(rect, quest_names, force)
+            finally:
+                self.pending=False
+        threading.Thread(target=worker, daemon=True, name='osrs-screen-sync').start()
+        return self.snapshot()
+
+    def sync(self, rect, quest_names, force=False):
+        """Compatibility entry point; now non-blocking."""
+        return self.request_sync(rect, quest_names, force)
 
     def snapshot(self):
         with self.lock:
