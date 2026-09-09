@@ -34,20 +34,13 @@ s = s[:start] + replacement + s[end:]
 # Import the fast passive sync and route projection helpers.
 if 'from screen_sync import ScreenSync' not in s:
     marker = "import tkinter as tk\n"
-    s = s.replace(marker, marker + "from screen_sync import ScreenSync\nfrom pathing import screen_route, guidance_text\n", 1)
+    s = s.replace(marker, marker + "import time\nfrom screen_sync import ScreenSync\nfrom pathing import screen_route, guidance_text\n", 1)
 
 # Initialize the passive sync engine once. It is deliberately non-blocking.
 needle = "self.client=None; self.overlay=None; self.oc=None; self.interactive=False; self.calibrating=False; self.player=None"
 replacement_init = needle + "; self.screen_sync=ScreenSync(); self.sync_snapshot=self.screen_sync.snapshot(); self.last_sync_request=0"
 if needle in s and 'self.screen_sync=ScreenSync()' not in s:
     s = s.replace(needle, replacement_init, 1)
-
-# Request a fast background scan from the game window. The scanner fingerprints
-# the image first, so unchanged interfaces do not trigger OCR repeatedly.
-tick_needle = "self.ensure_overlay(); self.update_client(); self.track_info.config(text=f'Player highlight: {\"detected\" if self.detect_player() else \"not detected\"}\\nCurrent step: {self.step+1 if self.stages() else 0}'); self.draw_overlay()"
-tick_replacement = "self.ensure_overlay(); self.update_client(); self._passive_sync(); self.track_info.config(text=f'Player highlight: {\"detected\" if self.detect_player() else \"not detected\"}\\nCurrent step: {self.step+1 if self.stages() else 0}'); self.draw_overlay()"
-if tick_needle in s and 'self._passive_sync();' not in s:
-    s = s.replace(tick_needle, tick_replacement, 1)
 
 # Add the non-blocking account sync method before tick.
 if '    def _passive_sync(self):' not in s:
@@ -56,7 +49,7 @@ if '    def _passive_sync(self):' not in s:
         if not self.client or not hasattr(self, 'screen_sync'):
             return
         now=time.time()
-        if now-self.last_sync_request < 1.25:
+        if now-self.last_sync_request < 1.0:
             self.sync_snapshot=self.screen_sync.snapshot()
             return
         self.last_sync_request=now
@@ -76,12 +69,18 @@ if '    def _passive_sync(self):' not in s:
                         self.cfg['skills'][name]=value
                         changed=True
                 if changed:
-                    self.persist(); self.refresh_route(); self.refresh_dashboard()
+                    self.persist(); self.refresh_route()
         except Exception:
             pass
 
 '''
     s = s.replace(marker, method + marker, 1)
+
+# Ensure every tick invokes the passive scanner without relying on the exact
+# formatting of the existing long tick line.
+tick_marker = '    def tick(self):\n        try:\n'
+if tick_marker in s and '            self._passive_sync()\n' not in s:
+    s = s.replace(tick_marker, '    def tick(self):\n        try:\n            self._passive_sync()\n', 1)
 
 # Draw a denser chain of guidance markers along the existing calibrated
 # destination line. These are screen-space guidance markers, not game input.
