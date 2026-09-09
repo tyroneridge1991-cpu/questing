@@ -13,7 +13,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.InventoryID;
@@ -34,7 +33,6 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 
-@Slf4j
 @PluginDescriptor(name = "Quest Navigator Account Sync", description = "Publishes read-only RuneLite account state to OSRS Quest Navigator.", tags = {"quest", "ironman", "skills", "bank", "inventory", "equipment", "sync"})
 public class AccountSyncPlugin extends Plugin
 {
@@ -109,7 +107,7 @@ public class AccountSyncPlugin extends Plugin
             try { Files.move(TEMP, FILE, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
             catch (AtomicMoveNotSupportedException e) { Files.move(TEMP, FILE, StandardCopyOption.REPLACE_EXISTING); }
         }
-        catch (IOException | RuntimeException e) { log.debug("Unable to publish account snapshot", e); }
+        catch (IOException | RuntimeException e) { /* read-only sync must never interrupt gameplay */ }
     }
 
     private Map<String,Object> items(InventoryID id)
